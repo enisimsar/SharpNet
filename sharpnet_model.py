@@ -118,23 +118,42 @@ class Decoder(nn.Module):
         else:
             x_out = F.interpolate(x_out, size=tuple(resized_resnet_outputs[0].shape[2:]),
                                   mode=self.interpolation)
+
+        #print("before cat: ", x_out.shape, resized_resnet_outputs[0].shape)
         x_out = torch.cat((x_out, resized_resnet_outputs[0]), 1)
 
         # upconv0
+
+        #combine = False
+
+        feats = x_out
+        resize_shape = tuple(input_image.shape[2:])
+
+        #if combine:
+        resizefeat_shape = (resize_shape[0]//2, resize_shape[1]//2)
+        feats = F.interpolate(feats, size=resizefeat_shape,
+                                  mode='bilinear',
+                                  align_corners=True)
+
         x_out = self.upconv0(x_out)
         if self.interpolation == 'bilinear':
-            x_out = F.interpolate(x_out, size=tuple(input_image.shape[2:]),
+            x_out = F.interpolate(x_out, size=resize_shape,
                                   mode='bilinear',
                                   align_corners=True)
         else:
-            x_out = F.interpolate(x_out, size=tuple(input_image.shape[2:]),
+            x_out = F.interpolate(x_out, size=resize_shape,
                                   mode=self.interpolation)
-        x_out = self.conv_out(x_out)
 
+        #if combine:
+            #return x_out
+
+        #print("after interp: ", x_out.shape)
+        x_out = self.conv_out(x_out)
+        #print("after convout: ", x_out.shape)
         if self.normalize_output:
             x_out = F.normalize(x_out, p=2, dim=1)
-
-        return x_out
+        #print("after normalize: ", x_out.shape)
+        return x_out, feats
 
 
 class SharpNet(nn.Module):
